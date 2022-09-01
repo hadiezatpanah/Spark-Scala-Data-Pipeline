@@ -1,4 +1,4 @@
-# Sample Date Pipeline (Spark-Scala)
+# Spark-Scala Data Pipeline
 
 ## Context
 
