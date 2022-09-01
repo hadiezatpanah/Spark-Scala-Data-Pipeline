@@ -142,6 +142,8 @@ The jar file will be created in the ```spark/brgroup/brgroup_2.11/0.1/brgroup_2.
 
 👤 **Hadi Ezatpanah**
 
+- Github: [@hadiezatpanah](https://github.com/hadiezatpanah)
+
 ## Version History
 * 0.1
     * Initial Release
