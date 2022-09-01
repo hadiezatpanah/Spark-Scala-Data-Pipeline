@@ -94,7 +94,11 @@ As another note, I used a config file to make the application more dynamic in di
 
 I didn't have enough time to write software tests such as unit tests, integration tests, system tests and etc. to test the correctness of the program. But for programs that are at the enterprise level, this point is very important. 
 
+## Version Compatibility
 
+Scala| Spark|sbt     
+--- | --- | ---
+2.11.12| 2.4.0| 1.3.13
 
 ## Getting Started
 
