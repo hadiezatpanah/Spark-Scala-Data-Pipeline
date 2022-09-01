@@ -1,0 +1,161 @@
+version: '3' 
+services:
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    volumes:
+      - ./hadoop/hdfs/namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop/hadoop-hive.env
+    ports:
+      - "50070:50070"
+      - "8020:8020"
+    # networks:
+    #   net_pet:
+    #     ipv4_address: 172.27.1.5
+  
+  datanode:
+    build: hadoop/datanode
+    image: datanode
+    container_name: datanode
+    volumes:
+    # hadoop hdfs mountin directory
+      - ./hadoop/hdfs/datanode:/hadoop/dfs/data
+    env_file:
+      - ./hadoop/hadoop-hive.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    depends_on:
+      - namenode
+    ports:
+      - "50075:50075"
+
+# spark cluster for running the solution.
+# including 1 master node, 1 worker node and a spark_submit container.
+  spark:
+    image: docker.io/bitnami/spark:2.4.6
+    container_name: spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - '8086:8080'
+
+
+  spark-worker:
+    image: docker.io/bitnami/spark:2.4.6
+    container_name: spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./data:/opt/bitnami/spark/data_org
+      - ./spark:/opt/bitnami/spark/work
+
+  spark-submit:
+    build: spark
+    image: spark
+    depends_on:
+      - spark
+      - spark-worker
+      - postgres
+    container_name: spark_submit
+    ports:
+      - '2221:22'
+    user: root
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./spark:/opt/bitnami/spark/work
+      - ./data:/opt/bitnami/spark/data_org
+
+  # posrgres database for airflow metada
+  postgres:
+    build: postgres/docker
+    image: postgres
+    restart: always
+    container_name: postgres
+    ports:
+      - "32769:5432"
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "airflow", "-U", "airflow" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    # volumes:
+    # this mounting directory will save postgress data to local system
+    # so by upping and downing docker database data wont be lost
+      # - ./postgres/postgres_data:/var/lib/postgresql/data
+#Adding Apache Nifi for ingesting xml files and pushing them into hdfs cluster.
+  nifi:
+    image: apache/nifi:latest
+    container_name: 'nifi'
+    ports:
+      - '8443:8080' 
+    environment:
+      - NIFI_WEB_HTTP_PORT=8080
+      - NIFI_CLUSTER_IS_NODE=false
+
+    volumes:
+      - ./data:/opt/nifi/data
+      - ./nifi/conf:/opt/nifi/conf
+  # Airflow for pipeline orchestration.
+  # importing nifi template and running spark app.  
+  airflow:
+    build: airflow/docker
+    image: airflow
+    restart: always
+    container_name: airflow
+    environment:
+      - AIRFLOW__CORE__FERNET_KEY="Z27wHAQxCObGWbIYyp06PlNoNlV7hyLO5zT74itoQww="
+    volumes:
+      - ./airflow/dags:/usr/local/airflow/dags
+      - ./nifi:/usr/local/airflow/nifi
+    ports:
+      - 8085:8080
+    depends_on:
+      - nifi
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "airflow", "8080" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+  
+  ftpd_server:
+    image: stilliard/pure-ftpd
+    container_name: pure-ftpd
+    ports:
+      - "20-23:20-23"
+      - "30000-30009:30000-30009"
+    volumes: 
+    # ftp server mounting directory
+      - ./ftp:/var/ftp
+    environment:
+      PUBLICHOST: "localhost"
+      FTP_USER_NAME: test
+      FTP_USER_PASS: test
+      FTP_USER_HOME: /var/ftp
+    restart: always
