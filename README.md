@@ -54,7 +54,7 @@ To do this, various tools have been used, which are explained below. Also, docke
 
 
 ## Solution Architecture
-To implement this code challenge, the following architecture is used, which the responsibility and the reason for use for each tool are described below.
+To implement this E2E solution, the following architecture is used, which the responsibility and the reason for use for each tool are described below.
 
 <p align="center">
   <img src = "Images/Arc.jpeg" width=80%>
@@ -74,25 +74,20 @@ so I have created a minimal template for nifi.
 
 
 ### Apache Spark
-I used Spark to solve the main part of the code challenge. The reason for choosing Spark is that it is very fast and works very well for large-scale problems. Also, there are many provided libraries for different tasks that make the development process faster and better. Another reason is my experience in using Spark.
+I used Spark to solve the main part of the code challenge. The reason for choosing Spark is that it is very fast and works very well for large-scale problems. Also, there are many provided libraries for different tasks that make the development process faster and better.
 
 
-The solution starts from reading the xml files from hadoop hdfs directory. Next, the requierd transformation is applied to dataframe columns and final dataframe is created. The final dataframe is written to postgres database using jdbc connection.  
+The solution starts from reading the xml files from hadoop hdfs directory. Next, the required transformation is applied to dataframe columns and final dataframe is created. The final dataframe is written to postgres database using jdbc connection.  
 
 <p align="center">
   <img src = "Images/Spark_Dag.jpeg" width=80%>
 </p>
 
 
-In order to fulfil requierment "The same document might be delivered multiple times, i. e. two weeks in a row", I used checkpoint. In each batch processing, all of document ids (combination of 3 fields including country, doc-number, kind) are logged in hdfs directory and in the begining of next batch, the repeated data will be excluded by checking with logs (using left anti join with original dataframe).
-In order to fulfil requierment "only one record per family_id should remain in the result tables, preserve values from all entries", I have implemented multiple things. First of all in current data frame, records are be aggregated based on family_id and valuess from othe fields are collected in array. 
+In order to fulfil requirement "The same document might be delivered multiple times, i. e. two weeks in a row", I used checkpoint. In each batch processing, all of document ids (combination of 3 fields including country, doc-number, kind) are logged in hdfs directory and in the begining of next batch, the repeated data will be excluded by checking with logs (using left anti join with original dataframe).
+In order to fulfil requirement "only one record per family_id should remain in the result tables, preserve values from all entries", I have implemented multiple things. First of all in current data frame, records are be aggregated based on family_id and valuess from othe fields are collected in array. 
 Secondly, in order to have only one record per family_id in the result table, I used upsert mechanism in postgres sql, to update previous inserted records if any conflict occured based on family_id. In such case, records with conflict family_id will be updated and data from other fields will be merged with their updated values. So all entries value will be preserved. 
 
-
-As another note, I used a config file to make the application more dynamic in different environments. accordingly, this App can be run in different environments such as local, Docker, and production just by changing these values. It is also possible to set some values such as address and port for sources like hdfs as well as spark session configurations without changing the code.
-
-
-I didn't have enough time to write software tests such as unit tests, integration tests, system tests and etc. to test the correctness of the program. But for programs that are at the enterprise level, this point is very important. 
 
 ## Version Compatibility
 
@@ -102,7 +97,7 @@ Scala| Spark|sbt
 
 ## Getting Started
 
-This section explains how to run this App. I have tried to make it very simple. 
+This section explains how to run this App. I tried to make it very simple. 
 
 ### Prerequisites
 The required prerequisites are:
@@ -133,6 +128,7 @@ Enter the following command to stop the containers:
 ```bash
 $ sudo docker-compose down -v
 ```
+
 
 ## Build from source
 Enter the following command to build from source. SBT must be installed on the system.
